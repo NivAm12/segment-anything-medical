@@ -1,8 +1,40 @@
 import cv2
 from segment_anything import sam_model_registry, SamAutomaticMaskGenerator
-from utils.util import iou_loss, load_mask_generator
+from utils.utils import iou_loss, load_mask_generator
 import wandb
 from tqdm import tqdm
+import matplotlib.pyplot as plt
+from utils.preprocess.mask import BiggestContour
+
+
+def pre_process():
+    # Load the ultrasound image
+    image_path = f'/home/projects/yonina/SAMPL_training/public_datasets/RadImageNet/radiology_ai/US/liver/usn053022.png'
+
+    image = cv2.imread(image_path)
+
+    # # Threshold the image to create a binary mask
+    # _, binary_mask = cv2.threshold(image, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    #
+    # # Find contours in the binary mask
+    # contours, _ = cv2.findContours(binary_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[-2:]
+    #
+    # # Find the contour with the largest area
+    # largest_contour = max(contours, key=cv2.contourArea)
+    #
+    # # Get the bounding box coordinates of the contour
+    # x, y, w, h = cv2.boundingRect(largest_contour)
+    #
+    # # Crop the image using the bounding box coordinates
+    # cropped_image = image[y:y + h, x:x + w]
+    contour = BiggestContour()
+    ct_image = contour(image)
+
+    fig, ax = plt.subplots(1, 1)
+    ax[0].imshow(image, cmap='gray')
+    # ax[1].imshow(cropped_image, cmap='gray')
+    # ax[2].imshow(ct_image, cmap='gray')
+    plt.show()
 
 
 def test_iou():
@@ -57,4 +89,5 @@ def test_iou():
 
 
 if __name__ == '__main__':
-    test_iou()
+    pre_process()
+    # test_iou()
