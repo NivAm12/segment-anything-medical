@@ -19,19 +19,18 @@ class BiggestContour(object):
     def __call__(self, process):
         # Image process
         process = process[6:-6, 6:-6]
-        process = cv.cvtColor(process, cv.COLOR_BGR2GRAY)
         process = cv.GaussianBlur(process, (5, 5), 0)
         # Finding contours
         contours, hierarchy = cv.findContours(process, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
         perimeter = max(contours, key=cv.contourArea)
         peri = cv.arcLength(perimeter, True)
         perimeter = cv.approxPolyDP(perimeter, self.approx * peri, True)
-        # Create mask
 
+        # Create mask
         mask = np.zeros(process.shape)
         cv.fillPoly(mask, [perimeter], 1)
         mask = mask.astype(bool)
-
+        mask = np.pad(mask, ((6, 6), (6, 6)), mode='constant', constant_values=0)
         return mask
 
 

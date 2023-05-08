@@ -1,40 +1,46 @@
 import cv2
-from segment_anything import sam_model_registry, SamAutomaticMaskGenerator
+from segment_anything import sam_model_registry, SamAutomaticMaskGenerator, SamPredictor
+from utils.plots import show_masks_on_image, show_points, show_mask
 from utils.utils import iou_loss, load_mask_generator
 import wandb
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 from utils.preprocess.mask import BiggestContour
+import numpy as np
 
 
-def pre_process():
-    # Load the ultrasound image
-    image_path = f'/home/projects/yonina/SAMPL_training/public_datasets/RadImageNet/radiology_ai/US/liver/usn053022.png'
-
-    image = cv2.imread(image_path)
-
-    # # Threshold the image to create a binary mask
-    # _, binary_mask = cv2.threshold(image, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    #
-    # # Find contours in the binary mask
-    # contours, _ = cv2.findContours(binary_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[-2:]
-    #
-    # # Find the contour with the largest area
-    # largest_contour = max(contours, key=cv2.contourArea)
-    #
-    # # Get the bounding box coordinates of the contour
-    # x, y, w, h = cv2.boundingRect(largest_contour)
-    #
-    # # Crop the image using the bounding box coordinates
-    # cropped_image = image[y:y + h, x:x + w]
+def pre_us():
+    sam_checkpoint = "pretrained/sam_vit_h_4b8939.pth"
+    model_type = "vit_h"
+    device = "cuda"
     contour = BiggestContour()
-    ct_image = contour(image)
 
-    fig, ax = plt.subplots(1, 1)
-    ax[0].imshow(image, cmap='gray')
-    # ax[1].imshow(cropped_image, cmap='gray')
-    # ax[2].imshow(ct_image, cmap='gray')
-    plt.show()
+    image = cv2.imread(
+        f'/home/projects/yonina/SAMPL_training/public_datasets/RadImageNet/radiology_ai/CT/lung/normal/lung-normal000032.png',
+        cv2.IMREAD_GRAYSCALE)
+
+    # preprocess
+    contour_image = contour(image)
+    masked_image = contour_image * image
+    remove_text_mask = cv2.threshold(masked_image, 210, 255, cv2.THRESH_BINARY)[1]
+    masked_image = cv2.inpaint(masked_image, remove_text_mask, 7, cv2.INPAINT_NS)
+    masked_image = cv2.cvtColor(masked_image, cv2.COLOR_GRAY2RGB)
+
+    # create masks
+    mask_generator = load_mask_generator(sam_checkpoint, model_type, sam_model_registry,
+                                         SamPredictor, device)
+    mask_generator.set_image(masked_image)
+    input_point = np.array([[100, 100], [20, 25], [185, 25]])
+    input_label = np.array([1, 0, 0])
+    # show_points(masked_image, input_point, input_label, plt.gca())
+
+    masks, scores, logits = mask_generator.predict(
+        point_coords=input_point,
+        point_labels=input_label,
+        multimask_output=True,
+    )
+
+    show_masks_on_image(masked_image, masks)
 
 
 def test_iou():
@@ -45,11 +51,11 @@ def test_iou():
     sam_checkpoint = "pretrained/sam_vit_h_4b8939.pth"
     model_type = "vit_h"
     device = "cuda"
-    num_examples = 5
+    num_examples = 100
 
     current_run = wandb.init(
         project="sam",
-        name=f"busi_dataset_medical_sam)",
+        name=f"medical_sam_with_ultrasound_preprocess)",
         config={
             "model": "sam",
             "vit": "vit_h",
@@ -58,12 +64,16 @@ def test_iou():
             "loss": "iou"
         }
     )
+    contour = BiggestContour()
 
     for i in tqdm(range(1, num_examples + 1)):
         image = cv2.imread(
             f'/home/projects/yonina/SAMPL_training/public_datasets/Dataset_BUSI_with_GT/malignant/malignant ({i}).png',
             cv2.IMREAD_GRAYSCALE)
-        image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
+        contour_image = contour(image)
+        masked_image = contour_image * image
+
+        image = cv2.cvtColor(masked_image, cv2.COLOR_GRAY2RGB)
         gt_mask = cv2.imread(
             f'/home/projects/yonina/SAMPL_training/public_datasets/Dataset_BUSI_with_GT/malignant/malignant ({i})_mask.png',
             cv2.IMREAD_GRAYSCALE)
@@ -89,5 +99,4 @@ def test_iou():
 
 
 if __name__ == '__main__':
-    pre_process()
-    # test_iou()
+    pre_us()

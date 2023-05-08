@@ -29,14 +29,14 @@ class Registry(object):
     The object's .py file should be imported in the __init__.py file of its python package (folder)
 
     Example:
-    >>> from registry import Registry
-    >>>
-    >>> BLOCKS = Registry("Blocks")
-    >>>
-    >>> @BLOCKS.register_class
-    ... class NeuralNet: pass
-    >>>
-    >>> print(BLOCKS)
+    # >>> from registry import Registry
+    # >>>
+    # >>> BLOCKS = Registry("Blocks")
+    # >>>
+    # >>> @BLOCKS.register_class
+    # ... class NeuralNet: pass
+    # >>>
+    # >>> print(BLOCKS)
     Registry(name=Blocks, items=['NeuralNet'])
     """
 
