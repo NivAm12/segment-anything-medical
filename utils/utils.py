@@ -10,9 +10,9 @@ def iou_loss(pred, target):
     return loss
 
 
-def load_mask_generator(sam_checkpoint, model_type, model_registry, mask_generator, device):
-    sam = model_registry[model_type](checkpoint=sam_checkpoint)
-    sam.to(device=device)
+def load_mask_generator(config, model_registry, mask_generator):
+    sam = model_registry[config['model_type']](checkpoint=config['checkpoint'])
+    sam.to(device=config['device'])
 
     mask_generator = mask_generator(sam)
 
