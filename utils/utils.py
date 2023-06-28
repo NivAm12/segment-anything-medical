@@ -4,6 +4,7 @@ from torch.utils.data import Dataset
 from pycocotools.coco import COCO
 from PIL import Image
 import os
+import cv2
 
 
 def iou_loss(pred, target):
@@ -39,7 +40,7 @@ class CocoDataset(Dataset):
         img_id = self.coco.getImgIds(imgIds=idx)
         img_info = self.coco.loadImgs(img_id)[0]
         img_path = os.path.join(self.image_dir, img_info['file_name'])
-        image = Image.open(img_path).convert("RGB")
+        image = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
 
         if self.transform:
             image = self.transform(image)
