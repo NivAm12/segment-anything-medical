@@ -1,6 +1,6 @@
 import cv2
 from segment_anything import sam_model_registry, SamAutomaticMaskGenerator
-from utils.plots import show_masks_on_image
+from utils.plots import show_masks_on_image, show_coco_anns
 from utils.utils import load_mask_generator, CocoDataset
 import wandb
 from tqdm import tqdm
@@ -25,29 +25,22 @@ def segment(img_dir, masks_dir, config, project, run_name):
     dataset = CocoDataset(coco_file=masks_dir,
                           image_dir=img_dir)
 
-    image, anns = dataset[15]
-    plt.imshow(image)
-    plt.axis('on')
-    dataset.coco.showAnns(anns)
-    plt.show()
-    # dataloader = DataLoader(dataset, batch_size=32, shuffle=True)
-
-
     files_list = os.listdir(img_dir)
-    #
-    # # select random image from the directory
-    # for _ in tqdm(range(config['num_examples'])):
-    #     file_name = random.choice(files_list)
-    #
-    #     # create the image masks
-    #     img_path = os.path.join(img_dir, file_name)
-    #     image = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
-    #     preprocess_image = preprocess(image)
-    #
-    #     predicted_pre, _ = generate_masks(preprocess_image, config)
-    #     image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
-    #     predicted_no_pre, _ = generate_masks(image, config)
 
+    # select random image from the directory
+    for _ in tqdm(range(config['num_examples'])):
+        mask_generator = load_mask_generator(config, sam_model_registry, SamAutomaticMaskGenerator)
+
+        image, anns = random.choice(dataset)
+        preprocess_image = preprocess(image)
+
+        # show_coco_anns(dataset.coco, image, anns)
+
+        predicted_pre, predicted_pre_masks = generate_masks(mask_generator, cv2.cvtColor(preprocess_image,
+                                                                                         cv2.COLOR_GRAY2RGB), config)
+        predicted_no_pre, predicted_no_pre_masks = generate_masks(mask_generator,
+                                                                  cv2.cvtColor(image, cv2.COLOR_GRAY2RGB), config)
+        
         # wandb data
     #     images_to_display = [wandb.Image(image), wandb.Image(preprocess_image), wandb.Image(predicted_no_pre),
     #                          wandb.Image(predicted_pre)]
@@ -65,19 +58,12 @@ def preprocess(image):
 
     # remove text from the image
     remove_text_mask = cv2.threshold(contour_image, 210, 255, cv2.THRESH_BINARY)[1]
-    no_text_image = cv2.inpaint(contour_image, remove_text_mask, 7, cv2.INPAINT_NS)
+    masked_image = cv2.inpaint(contour_image, remove_text_mask, 7, cv2.INPAINT_NS)
 
-    # fill the background of the image with the mean color of the image
-    foreground_mask = cv2.threshold(no_text_image, 0.05, 255, cv2.THRESH_BINARY)[1]
-    background = cv2.bitwise_not(foreground_mask)
-    masked_image = cv2.inpaint(no_text_image, background, 7, cv2.INPAINT_NS)
-
-    masked_image = cv2.cvtColor(masked_image, cv2.COLOR_GRAY2RGB)
     return masked_image
 
 
-def generate_masks(image, config):
-    mask_generator = load_mask_generator(config, sam_model_registry, SamAutomaticMaskGenerator)
+def generate_masks(mask_generator, image, config):
     masks = mask_generator.generate(image)
 
     masks = [mask['segmentation'] for mask in masks]
@@ -89,8 +75,8 @@ def generate_masks(image, config):
 if __name__ == '__main__':
     project = 'sam_ultrasound'
     run_name = 'us_kidney'
-    img_dir = '/home/projects/yonina/SAMPL_training/public_datasets/RadImageNet/radiology_ai/US/spleen'
-    masks_dir = '/home/projects/yonina/SAMPL_training/public_datasets/RadImageNet/masks/spleen/masks.json'
+    img_dir = '/home/projects/yonina/SAMPL_training/public_datasets/RadImageNet/radiology_ai/US/liver'
+    masks_dir = '/home/projects/yonina/SAMPL_training/public_datasets/RadImageNet/masks/liver/masks.json'
 
     run_config = {
         'checkpoint': 'pretrained/sam_vit_h_4b8939.pth',
