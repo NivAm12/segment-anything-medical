@@ -5,12 +5,10 @@ from utils.utils import load_mask_generator, CocoDataset
 import wandb
 from tqdm import tqdm
 from utils.preprocess.mask import BiggestContour
-import os
 import random
-import numpy as np
-from torch.utils.data import DataLoader
+from skimage.feature import hog
 import matplotlib.pyplot as plt
-import pycocotools.coco as coco
+import numpy as np
 
 
 def segment(img_dir, masks_dir, config, project, run_name):
@@ -25,22 +23,28 @@ def segment(img_dir, masks_dir, config, project, run_name):
     dataset = CocoDataset(coco_file=masks_dir,
                           image_dir=img_dir)
 
-    files_list = os.listdir(img_dir)
+    mask_generator = load_mask_generator(config, sam_model_registry, SamAutomaticMaskGenerator)
 
     # select random image from the directory
     for _ in tqdm(range(config['num_examples'])):
-        mask_generator = load_mask_generator(config, sam_model_registry, SamAutomaticMaskGenerator)
-
         image, anns = random.choice(dataset)
         preprocess_image = preprocess(image)
 
-        # show_coco_anns(dataset.coco, image, anns)
+        # hog
+        fd, hog_image = hog(preprocess_image, orientations=9, pixels_per_cell=(8, 8),
+                            cells_per_block=(1, 1), visualize=True)
+        t1 = np.expand_dims(preprocess_image, axis=-1)
+        t2 = np.expand_dims(hog_image, axis=-1)
+        t3 = np.zeros_like(t1)
+        t4 = np.concatenate([t1, t2, t3], axis=-1).astype(np.uint8)
 
-        predicted_pre, predicted_pre_masks = generate_masks(mask_generator, cv2.cvtColor(preprocess_image,
-                                                                                         cv2.COLOR_GRAY2RGB), config)
+        predicted_pre, predicted_pre_masks = generate_masks(mask_generator, t4, config)
+
         predicted_no_pre, predicted_no_pre_masks = generate_masks(mask_generator,
                                                                   cv2.cvtColor(image, cv2.COLOR_GRAY2RGB), config)
-        
+
+        plt.imshow(predicted_pre)
+        plt.show()
         # wandb data
     #     images_to_display = [wandb.Image(image), wandb.Image(preprocess_image), wandb.Image(predicted_no_pre),
     #                          wandb.Image(predicted_pre)]
