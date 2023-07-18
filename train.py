@@ -1,4 +1,3 @@
-from utils.load_dataset import load_dataset
 import argparse
 import os
 import sys
@@ -84,7 +83,7 @@ def get_args_parser():
     parser.add_argument("--lr", default=0.0005, type=float, help="""Learning rate at the end of
         linear warmup (highest LR used during training). The learning rate is linearly scaled
         with the batch size, and specified here for a reference batch size of 256.""")
-    parser.add_argument("--warmup_epochs", default=10, type=int,
+    parser.add_argument("--warmup_epochs", default=2, type=int,
         help="Number of epochs for the linear learning-rate warm up.")
     parser.add_argument('--min_lr', type=float, default=1e-6, help="""Target LR at the
         end of optimization. We use a cosine LR schedule with linear warmup.""")
@@ -108,9 +107,9 @@ def get_args_parser():
     parser.add_argument('--data_path', default='/path/to/imagenet/train/', type=str,
         help='Please specify path to the ImageNet training data.')
     parser.add_argument('--output_dir', default=".", type=str, help='Path to save logs and checkpoints.')
-    parser.add_argument('--saveckp_freq', default=20, type=int, help='Save checkpoint every x epochs.')
+    parser.add_argument('--saveckp_freq', default=1, type=int, help='Save checkpoint every x epochs.')
     parser.add_argument('--seed', default=0, type=int, help='Random seed.')
-    parser.add_argument('--num_workers', default=10, type=int, help='Number of data loading workers per GPU.')
+    parser.add_argument('--num_workers', default=4, type=int, help='Number of data loading workers per GPU.')
     parser.add_argument("--dist_url", default="env://", type=str, help="""url used to set up
         distributed training; see https://pytorch.org/docs/stable/distributed.html""")
     parser.add_argument("--local_rank", default=0, type=int, help="Please ignore and do not set this argument.")
@@ -118,6 +117,7 @@ def get_args_parser():
     # Logger
     parser.add_argument("--use_wandb", default=True, type = bool, help = "Whether to use W&B for metric logging")
     parser.add_argument("--wandb_project", default="dino_us", type=str, help="Name of the W&B Project")
+    parser.add_argument("--wandb_entity", default=None, type=str, help="entity to use for W&B logging")
     return parser
 
 
